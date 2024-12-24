@@ -48,164 +48,165 @@ pub use weights::*;
 // All pallet logic is defined in its own module and must be annotated by the `pallet` attribute.
 #[frame_support::pallet]
 pub mod pallet {
-	// Import various useful types required by all FRAME pallets.
-	use super::*;
-	use frame_support::pallet_prelude::*;
-	use frame_system::pallet_prelude::*;
+    // Import various useful types required by all FRAME pallets.
+    use super::*;
+    use frame_support::pallet_prelude::*;
+    use frame_system::pallet_prelude::*;
 
-	use polkavm::{Config as PolkaVMConfig, Engine, Linker, Module as PolkaVMModule, ProgramBlob};
+    use polkavm::{Config as PolkaVMConfig, Engine, Linker, Module as PolkaVMModule, ProgramBlob};
 
-	// The `Pallet` struct serves as a placeholder to implement traits, methods and dispatchables
-	// (`Call`s) in this pallet.
-	#[pallet::pallet]
-	pub struct Pallet<T>(_);
+    // The `Pallet` struct serves as a placeholder to implement traits, methods and dispatchables
+    // (`Call`s) in this pallet.
+    #[pallet::pallet]
+    pub struct Pallet<T>(_);
 
-	/// The pallet's configuration trait.
-	///
-	/// All our types and constants a pallet depends on must be declared here.
-	/// These types are defined generically and made concrete when the pallet is declared in the
-	/// `runtime/src/lib.rs` file of your chain.
-	#[pallet::config]
-	pub trait Config: frame_system::Config {
-		/// The overarching runtime event type.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		/// A type representing the weights required by the dispatchables of this pallet.
-		type WeightInfo: WeightInfo;
-	}
+    /// The pallet's configuration trait.
+    ///
+    /// All our types and constants a pallet depends on must be declared here.
+    /// These types are defined generically and made concrete when the pallet is declared in the
+    /// `runtime/src/lib.rs` file of your chain.
+    #[pallet::config]
+    pub trait Config: frame_system::Config {
+        /// The overarching runtime event type.
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+        /// A type representing the weights required by the dispatchables of this pallet.
+        type WeightInfo: WeightInfo;
+    }
 
-	/// A storage item for this pallet.
-	///
-	/// In this template, we are declaring a storage item called `Something` that stores a single
-	/// `u32` value. Learn more about runtime storage here: <https://docs.substrate.io/build/runtime-storage/>
-	#[pallet::storage]
-	pub type LastCalculationResult<T> = StorageValue<_, u32>;
+    /// A storage item for this pallet.
+    ///
+    /// In this template, we are declaring a storage item called `Something` that stores a single
+    /// `u32` value. Learn more about runtime storage here: <https://docs.substrate.io/build/runtime-storage/>
+    #[pallet::storage]
+    pub type LastCalculationResult<T> = StorageValue<_, u32>;
 
-	/// Events that functions in this pallet can emit.
-	///
-	/// Events are a simple means of indicating to the outside world (such as dApps, chain explorers
-	/// or other users) that some notable update in the runtime has occurred. In a FRAME pallet, the
-	/// documentation for each event field and its parameters is added to a node's metadata so it
-	/// can be used by external interfaces or tools.
-	///
-	///	The `generate_deposit` macro generates a function on `Pallet` called `deposit_event` which
-	/// will convert the event type of your pallet into `RuntimeEvent` (declared in the pallet's
-	/// [`Config`] trait) and deposit it using [`frame_system::Pallet::deposit_event`].
-	#[pallet::event]
-	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {
-		/// A user has successfully set a new value.
-		Calculated {
-			/// The new value set.
-			result: u32,
-			/// The account who set the new value.
-			who: T::AccountId,
-		},
-	}
+    /// Events that functions in this pallet can emit.
+    ///
+    /// Events are a simple means of indicating to the outside world (such as dApps, chain explorers
+    /// or other users) that some notable update in the runtime has occurred. In a FRAME pallet, the
+    /// documentation for each event field and its parameters is added to a node's metadata so it
+    /// can be used by external interfaces or tools.
+    ///
+    ///	The `generate_deposit` macro generates a function on `Pallet` called `deposit_event` which
+    /// will convert the event type of your pallet into `RuntimeEvent` (declared in the pallet's
+    /// [`Config`] trait) and deposit it using [`frame_system::Pallet::deposit_event`].
+    #[pallet::event]
+    #[pallet::generate_deposit(pub(super) fn deposit_event)]
+    pub enum Event<T: Config> {
+        /// A user has successfully set a new value.
+        Calculated {
+            /// The new value set.
+            result: u32,
+            /// The account who set the new value.
+            who: T::AccountId,
+        },
+    }
 
-	/// Errors that can be returned by this pallet.
-	///
-	/// Errors tell users that something went wrong so it's important that their naming is
-	/// informative. Similar to events, error documentation is added to a node's metadata so it's
-	/// equally important that they have helpful documentation associated with them.
-	///
-	/// This type of runtime error can be up to 4 bytes in size should you want to return additional
-	/// information.
-	#[pallet::error]
-	pub enum Error<T> {
-		/// The value retrieved was `None` as no value was previously set.
-		NoneValue,
-		/// There was an attempt to increment the value in storage over `u32::MAX`.
-		StorageOverflow,
+    /// Errors that can be returned by this pallet.
+    ///
+    /// Errors tell users that something went wrong so it's important that their naming is
+    /// informative. Similar to events, error documentation is added to a node's metadata so it's
+    /// equally important that they have helpful documentation associated with them.
+    ///
+    /// This type of runtime error can be up to 4 bytes in size should you want to return additional
+    /// information.
+    #[pallet::error]
+    pub enum Error<T> {
+        /// The value retrieved was `None` as no value was previously set.
+        NoneValue,
+        /// There was an attempt to increment the value in storage over `u32::MAX`.
+        StorageOverflow,
 
-		// PolkaVM errors
-		ProgramBlobParsingFailed,
-		PolkaVMConfigurationFailed,
-		PolkaVMEngineCreationFailed,
-		PolkaVMModuleCreationFailed,
-		HostFunctionDefinitionFailed,	
-		PolkaVMModuleExecutionFailed,
-		PolkaVMModuleInstantiationFailed,
-		PolkaVMModulePreInstantiationFailed,
-	}
+        // PolkaVM errors
+        ProgramBlobParsingFailed,
+        PolkaVMConfigurationFailed,
+        PolkaVMEngineCreationFailed,
+        PolkaVMModuleCreationFailed,
+        HostFunctionDefinitionFailed,
+        PolkaVMModuleExecutionFailed,
+        PolkaVMModuleInstantiationFailed,
+        PolkaVMModulePreInstantiationFailed,
+    }
 
-	/// The pallet's dispatchable functions ([`Call`]s).
-	///
-	/// Dispatchable functions allows users to interact with the pallet and invoke state changes.
-	/// These functions materialize as "extrinsics", which are often compared to transactions.
-	/// They must always return a `DispatchResult` and be annotated with a weight and call index.
-	///
-	/// The [`call_index`] macro is used to explicitly
-	/// define an index for calls in the [`Call`] enum. This is useful for pallets that may
-	/// introduce new dispatchables over time. If the order of a dispatchable changes, its index
-	/// will also change which will break backwards compatibility.
-	///
-	/// The [`weight`] macro is used to assign a weight to each call.
-	#[pallet::call]
-	impl<T: Config> Pallet<T> {
-		/// An example dispatchable that takes a single u32 value as a parameter, writes the value
-		/// to storage and emits an event.
-		///
-		/// It checks that the _origin_ for this call is _Signed_ and returns a dispatch
-		/// error if it isn't. Learn more about origins here: <https://docs.substrate.io/build/origins/>
-		#[pallet::call_index(0)]
-		#[pallet::weight(T::WeightInfo::sum_two_numbers())]
-		pub fn sum_two_numbers(origin: OriginFor<T>, a: u32, b: u32) -> DispatchResult {
-			// Check that the extrinsic was signed and get the signer.
-			let who = ensure_signed(origin)?;
+    /// The pallet's dispatchable functions ([`Call`]s).
+    ///
+    /// Dispatchable functions allows users to interact with the pallet and invoke state changes.
+    /// These functions materialize as "extrinsics", which are often compared to transactions.
+    /// They must always return a `DispatchResult` and be annotated with a weight and call index.
+    ///
+    /// The [`call_index`] macro is used to explicitly
+    /// define an index for calls in the [`Call`] enum. This is useful for pallets that may
+    /// introduce new dispatchables over time. If the order of a dispatchable changes, its index
+    /// will also change which will break backwards compatibility.
+    ///
+    /// The [`weight`] macro is used to assign a weight to each call.
+    #[pallet::call]
+    impl<T: Config> Pallet<T> {
+        /// An example dispatchable that takes a single u32 value as a parameter, writes the value
+        /// to storage and emits an event.
+        ///
+        /// It checks that the _origin_ for this call is _Signed_ and returns a dispatch
+        /// error if it isn't. Learn more about origins here: <https://docs.substrate.io/build/origins/>
+        #[pallet::call_index(0)]
+        #[pallet::weight(T::WeightInfo::sum_two_numbers())]
+        pub fn sum_two_numbers(origin: OriginFor<T>, a: u32, b: u32) -> DispatchResult {
+            // Check that the extrinsic was signed and get the signer.
+            let who = ensure_signed(origin)?;
 
-			let result = Self::sum(a, b)?;
+            let result = Self::sum(a, b)?;
 
-			// Update storage.
-			LastCalculationResult::<T>::put(result);
+            // Update storage.
+            LastCalculationResult::<T>::put(result);
 
-			// Emit an event.
-			Self::deposit_event(Event::Calculated { result, who });
+            // Emit an event.
+            Self::deposit_event(Event::Calculated { result, who });
 
-			// Return a successful `DispatchResult`
-			Ok(())
-		}
+            // Return a successful `DispatchResult`
+            Ok(())
+        }
+    }
 
+    trait Calculator {
+        fn sum(a: u32, b: u32) -> Result<u32, DispatchError>;
+    }
 
-	}
+    impl<T: Config> Calculator for Pallet<T> {
+        fn sum(a: u32, b: u32) -> Result<u32, DispatchError> {
+            let raw_blob = include_bytes!("../../../runtime/res/example-hello-world.polkavm");
+            let blob = ProgramBlob::parse(raw_blob[..].into())
+                .map_err(|_| Error::<T>::ProgramBlobParsingFailed)?;
 
-	trait Calculator {
-		fn sum(a: u32, b: u32) -> Result<u32, DispatchError>;
-	}
+            let config =
+                PolkaVMConfig::from_env().map_err(|_| Error::<T>::PolkaVMConfigurationFailed)?;
+            let engine =
+                Engine::new(&config).map_err(|_| Error::<T>::PolkaVMEngineCreationFailed)?;
+            let module = PolkaVMModule::from_blob(&engine, &Default::default(), blob)
+                .map_err(|_| Error::<T>::PolkaVMModuleCreationFailed)?;
 
-	impl<T: Config> Calculator for Pallet<T> {
-		fn sum(a: u32, b: u32) -> Result<u32, DispatchError> {
-			let raw_blob = include_bytes!("../../../runtime/res/example-hello-world.polkavm");
-			let blob = ProgramBlob::parse(raw_blob[..].into())
-				.map_err(|_| Error::<T>::ProgramBlobParsingFailed)?;
+            // High-level API.
+            let mut linker: Linker = Linker::new();
 
-			let config = PolkaVMConfig::from_env()
-				.map_err(|_| Error::<T>::PolkaVMConfigurationFailed)?;
-			let engine = Engine::new(&config)
-				.map_err(|_| Error::<T>::PolkaVMEngineCreationFailed)?;
-			let module = PolkaVMModule::from_blob(&engine, &Default::default(), blob)
-				.map_err(|_| Error::<T>::PolkaVMModuleCreationFailed)?;
+            // Define a host function.
+            linker
+                .define_typed("get_third_number", || -> u32 { 0 })
+                .map_err(|_| Error::<T>::HostFunctionDefinitionFailed)?;
 
-			// High-level API.
-			let mut linker: Linker = Linker::new();
+            // Link the host functions with the module.
+            let instance_pre = linker
+                .instantiate_pre(&module)
+                .map_err(|_| Error::<T>::PolkaVMModulePreInstantiationFailed)?;
 
-			// Define a host function.
-			linker.define_typed("get_third_number", || -> u32 { 0 })
-				.map_err(|_| Error::<T>::HostFunctionDefinitionFailed)?;
+            // Instantiate the module.
+            let mut instance = instance_pre
+                .instantiate()
+                .map_err(|_| Error::<T>::PolkaVMModuleInstantiationFailed)?;
 
-			// Link the host functions with the module.
-			let instance_pre = linker.instantiate_pre(&module)
-				.map_err(|_| Error::<T>::PolkaVMModulePreInstantiationFailed)?;
+            // Grab the function and call it.
+            let result = instance
+                .call_typed_and_get_result::<u32, (u32, u32)>(&mut (), "add_numbers", (a, b))
+                .map_err(|_| Error::<T>::PolkaVMModuleExecutionFailed)?;
 
-			// Instantiate the module.
-			let mut instance = instance_pre.instantiate()
-				.map_err(|_| Error::<T>::PolkaVMModuleInstantiationFailed)?;
-
-			// Grab the function and call it.
-			let result = instance
-				.call_typed_and_get_result::<u32, (u32, u32)>(&mut (), "add_numbers", (a, b))
-				.map_err(|_| Error::<T>::PolkaVMModuleExecutionFailed)?;
-
-			Ok(result)
-		}
-	}
+            Ok(result)
+        }
+    }
 }
