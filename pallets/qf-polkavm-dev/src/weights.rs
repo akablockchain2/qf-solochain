@@ -34,7 +34,8 @@ use core::marker::PhantomData;
 
 /// Weight functions needed for pallet_template.
 pub trait WeightInfo {
-	fn sum_two_numbers() -> Weight;
+	fn execute() -> Weight;
+	fn upload() -> Weight;
 }
 
 /// Weights for pallet_template using the Substrate node and recommended hardware.
@@ -42,7 +43,16 @@ pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: TemplateModule Something (r:0 w:1)
 	/// Proof: TemplateModule Something (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
-	fn sum_two_numbers() -> Weight {
+	fn execute() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 8_000_000 picoseconds.
+		Weight::from_parts(9_000_000, 0)
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
+
+	fn upload() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
@@ -56,7 +66,16 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 impl WeightInfo for () {
 	/// Storage: TemplateModule Something (r:0 w:1)
 	/// Proof: TemplateModule Something (max_values: Some(1), max_size: Some(4), added: 499, mode: MaxEncodedLen)
-	fn sum_two_numbers() -> Weight {
+	fn execute() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 8_000_000 picoseconds.
+		Weight::from_parts(9_000_000, 0)
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+
+	fn upload() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
