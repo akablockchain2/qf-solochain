@@ -7,7 +7,7 @@ vendor-clone:
 tools: polkatool chain-spec-builder
 
 chain-spec-builder:
-	cargo install --path vendor/polkadot-sdk staging-chain-spec-builder
+	cargo install --path vendor/polkadot-sdk/substrate/bin/utils/chain-spec-builder
 
 polkatool:
 	cargo install --path vendor/polkavm/tools/polkatool
