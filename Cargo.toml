@@ -1,5 +1,5 @@
 [workspace.package]
-authors = ["Max Pestov <ealataur@gmail.com>"]
+authors = ["Max Pestov <ealataur@gmail.com>", "Andrei Orlov <aaorlov1@gmail.com>"]
 edition = "2024"
 homepage = "https://quantumfusion.pro/"
 license = ""
@@ -27,6 +27,7 @@ clap = { version = "4.5.10" }
 frame-benchmarking-cli = { path = "./vendor/polkadot-sdk/substrate/utils/frame/benchmarking-cli", default-features = false }
 futures = { version = "0.3.30" }
 jsonrpsee = { version = "0.24.7" }
+polkavm = { git = "https://github.com/paritytech/polkavm.git", tag = "v0.18.0", default-features = false }
 pallet-transaction-payment-rpc = { path = "./vendor/polkadot-sdk/substrate/frame/transaction-payment/rpc", default-features = false }
 sc-basic-authorship = { path = "./vendor/polkadot-sdk/substrate/client/basic-authorship", default-features = false }
 sc-cli = { path = "./vendor/polkadot-sdk/substrate/client/cli", default-features = false }
