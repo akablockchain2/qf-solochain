@@ -172,7 +172,7 @@ pub mod pallet {
 
     impl<T: Config> Calculator for Pallet<T> {
         fn sum(a: u32, b: u32) -> Result<u32, DispatchError> {
-            let raw_blob = include_bytes!("../../../runtime/res/example-hello-world.polkavm");
+            let raw_blob = include_bytes!("../../../output/qf-pvm-calc.polkavm");
             let blob = ProgramBlob::parse(raw_blob[..].into())
                 .map_err(|_| Error::<T>::ProgramBlobParsingFailed)?;
 

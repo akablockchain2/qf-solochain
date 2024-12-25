@@ -27,3 +27,10 @@ make qf-run
 -   Run tests: `make qf-test`
 -   Check all: `make check`
 -   Make chain spec: `make chainspec`
+-   Make PolkaVM blob: `make pvm-prog-<progname>` where `<progname>` is the name of the program to be compiled. For example `make pvm-prog-calc`
+
+### Compiling PolkaVM programs
+To compile a program, run `make pvm-prog-<progname>` where `<progname>` is the name of the program to be compiled. For example, `make pvm-prog-calc`.
+The `.polkavm` file will be generated in `output/`.
+
+After that you can use the `make run` to run the node. Then go to UI Polkadot.js and call the extrisinc `qfPolkaVM` and run function `sumTwoNumbers` with the two numbers you want to sum.
