@@ -157,8 +157,13 @@ impl pallet_sudo::Config for Runtime {
     type WeightInfo = pallet_sudo::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+    pub const PolkaVmMaxCodeLen: u32 = 1024;
+}
+
 /// Configure the pallet-template in pallets/template.
 impl pallet_qf_polkavm_dev::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type WeightInfo = pallet_qf_polkavm_dev::weights::SubstrateWeight<Runtime>;
+    type MaxCodeLen = PolkaVmMaxCodeLen;
 }
