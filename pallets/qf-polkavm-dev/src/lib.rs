@@ -52,8 +52,13 @@ pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
+    use scale_info::prelude::vec::Vec;
 
-    use polkavm::{Config as PolkaVMConfig, Engine, Linker, Module as PolkaVMModule, ProgramBlob};
+    use polkavm::{
+        Config as PolkaVMConfig, Engine, Instance, Linker, Module as PolkaVMModule, ProgramBlob,
+    };
+
+    type CodeVec<T> = BoundedVec<u8, <T as Config>::MaxCodeLen>;
 
     // The `Pallet` struct serves as a placeholder to implement traits, methods and dispatchables
     // (`Call`s) in this pallet.
@@ -71,14 +76,22 @@ pub mod pallet {
         type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
         /// A type representing the weights required by the dispatchables of this pallet.
         type WeightInfo: WeightInfo;
+
+        /// The maximum length of a contract code in bytes.
+        ///
+        /// The value should be chosen carefully taking into the account the overall memory limit
+        /// your runtime has, as well as the [maximum allowed callstack
+        /// depth](#associatedtype.CallStack). Look into the `integrity_test()` for some insights.
+        #[pallet::constant]
+        type MaxCodeLen: Get<u32>;
     }
 
-    /// A storage item for this pallet.
-    ///
-    /// In this template, we are declaring a storage item called `Something` that stores a single
-    /// `u32` value. Learn more about runtime storage here: <https://docs.substrate.io/build/runtime-storage/>
     #[pallet::storage]
-    pub type LastCalculationResult<T> = StorageValue<_, u32>;
+    pub(super) type Code<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, CodeVec<T>>;
+
+    #[pallet::storage]
+    pub(super) type CalculationResult<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, u32>;
 
     /// Events that functions in this pallet can emit.
     ///
@@ -100,6 +113,11 @@ pub mod pallet {
             /// The account who set the new value.
             who: T::AccountId,
         },
+        ProgramBlobUploaded {
+            /// The account who set the new value.
+            who: T::AccountId,
+            exports: Vec<Vec<u8>>,
+        },
     }
 
     /// Errors that can be returned by this pallet.
@@ -112,12 +130,13 @@ pub mod pallet {
     /// information.
     #[pallet::error]
     pub enum Error<T> {
-        /// The value retrieved was `None` as no value was previously set.
-        NoneValue,
-        /// There was an attempt to increment the value in storage over `u32::MAX`.
-        StorageOverflow,
+        IntegerOverflow,
+        ProgramBlobNotFound,
+        InvalidOperation,
+        InvalidOperands,
 
         // PolkaVM errors
+        ProgramBlobTooLarge,
         ProgramBlobParsingFailed,
         PolkaVMConfigurationFailed,
         PolkaVMEngineCreationFailed,
@@ -142,21 +161,56 @@ pub mod pallet {
     /// The [`weight`] macro is used to assign a weight to each call.
     #[pallet::call]
     impl<T: Config> Pallet<T> {
+        #[pallet::call_index(0)]
+        #[pallet::weight(T::WeightInfo::upload())]
+        pub fn upload(origin: OriginFor<T>, mut program_blob: Vec<u8>) -> DispatchResult {
+            // Check that the extrinsic was signed and get the signer.
+            let who = ensure_signed(origin)?;
+
+            let max_len = <T as Config>::MaxCodeLen::get()
+                .try_into()
+                .map_err(|_| Error::<T>::IntegerOverflow)?;
+            let mut raw_blob = BoundedVec::with_bounded_capacity(max_len);
+            raw_blob
+                .try_append(&mut program_blob)
+                .map_err(|_| Error::<T>::ProgramBlobTooLarge)?;
+
+            let module = Self::prepare(raw_blob[..].into())?;
+            let exports = module
+                .exports()
+                .map(|export| export.symbol().clone().into_inner().to_vec())
+                .collect();
+
+            Code::<T>::insert(who.clone(), raw_blob);
+
+            Self::deposit_event(Event::ProgramBlobUploaded { who, exports });
+
+            Ok(())
+        }
+
         /// An example dispatchable that takes a single u32 value as a parameter, writes the value
         /// to storage and emits an event.
         ///
         /// It checks that the _origin_ for this call is _Signed_ and returns a dispatch
         /// error if it isn't. Learn more about origins here: <https://docs.substrate.io/build/origins/>
-        #[pallet::call_index(0)]
-        #[pallet::weight(T::WeightInfo::sum_two_numbers())]
-        pub fn sum_two_numbers(origin: OriginFor<T>, a: u32, b: u32) -> DispatchResult {
+        #[pallet::call_index(1)]
+        #[pallet::weight(T::WeightInfo::execute())]
+        pub fn execute(origin: OriginFor<T>, a: u32, b: u32, op: u8) -> DispatchResult {
             // Check that the extrinsic was signed and get the signer.
             let who = ensure_signed(origin)?;
 
-            let result = Self::sum(a, b)?;
+            let raw_blob = Code::<T>::get(&who)
+                .ok_or(Error::<T>::ProgramBlobNotFound)?
+                .into_inner();
 
-            // Update storage.
-            LastCalculationResult::<T>::put(result);
+            let result = match op {
+                0 => Self::sum(a, b, raw_blob)?,
+                1 => Self::sub(a, b, raw_blob)?,
+                2 => Self::mul(a, b, raw_blob)?,
+                _ => Err(Error::<T>::InvalidOperation)?,
+            };
+
+            CalculationResult::<T>::insert(&who, result);
 
             // Emit an event.
             Self::deposit_event(Event::Calculated { result, who });
@@ -167,12 +221,53 @@ pub mod pallet {
     }
 
     trait Calculator {
-        fn sum(a: u32, b: u32) -> Result<u32, DispatchError>;
+        fn sum(a: u32, b: u32, raw_blob: Vec<u8>) -> Result<u32, DispatchError>;
+        fn sub(a: u32, b: u32, raw_blob: Vec<u8>) -> Result<u32, DispatchError>;
+        fn mul(a: u32, b: u32, raw_blob: Vec<u8>) -> Result<u32, DispatchError>;
     }
 
     impl<T: Config> Calculator for Pallet<T> {
-        fn sum(a: u32, b: u32) -> Result<u32, DispatchError> {
-            let raw_blob = include_bytes!("../../../output/qf-pvm-calc.polkavm");
+        fn sum(a: u32, b: u32, raw_blob: Vec<u8>) -> Result<u32, DispatchError> {
+            a.checked_add(b).ok_or(Error::<T>::InvalidOperands)?;
+
+            // Grab the function and call it.
+            let result = Self::instantiate(Self::prepare(raw_blob)?)?
+                .call_typed_and_get_result::<u32, (u32, u32)>(&mut (), "add_numbers", (a, b))
+                .map_err(|_| Error::<T>::PolkaVMModuleExecutionFailed)?;
+
+            Ok(result)
+        }
+
+        fn sub(a: u32, b: u32, raw_blob: Vec<u8>) -> Result<u32, DispatchError> {
+            a.checked_sub(b).ok_or(Error::<T>::InvalidOperands)?;
+
+            // Grab the function and call it.
+            let result = Self::instantiate(Self::prepare(raw_blob)?)?
+                .call_typed_and_get_result::<u32, (u32, u32)>(&mut (), "sub_numbers", (a, b))
+                .map_err(|_| Error::<T>::PolkaVMModuleExecutionFailed)?;
+
+            Ok(result)
+        }
+
+        fn mul(a: u32, b: u32, raw_blob: Vec<u8>) -> Result<u32, DispatchError> {
+            a.checked_mul(b).ok_or(Error::<T>::InvalidOperands)?;
+
+            // Grab the function and call it.
+            let result = Self::instantiate(Self::prepare(raw_blob)?)?
+                .call_typed_and_get_result::<u32, (u32, u32)>(&mut (), "mul_numbers", (a, b))
+                .map_err(|_| Error::<T>::PolkaVMModuleExecutionFailed)?;
+
+            Ok(result)
+        }
+    }
+
+    trait ModuleLoader {
+        fn prepare(raw_blob: Vec<u8>) -> Result<PolkaVMModule, DispatchError>;
+        fn instantiate(module: PolkaVMModule) -> Result<Instance, DispatchError>;
+    }
+
+    impl<T: Config> ModuleLoader for Pallet<T> {
+        fn prepare(raw_blob: Vec<u8>) -> Result<PolkaVMModule, DispatchError> {
             let blob = ProgramBlob::parse(raw_blob[..].into())
                 .map_err(|_| Error::<T>::ProgramBlobParsingFailed)?;
 
@@ -183,13 +278,12 @@ pub mod pallet {
             let module = PolkaVMModule::from_blob(&engine, &Default::default(), blob)
                 .map_err(|_| Error::<T>::PolkaVMModuleCreationFailed)?;
 
-            // High-level API.
-            let mut linker: Linker = Linker::new();
+            Ok(module)
+        }
 
-            // Define a host function.
-            linker
-                .define_typed("get_third_number", || -> u32 { 0 })
-                .map_err(|_| Error::<T>::HostFunctionDefinitionFailed)?;
+        fn instantiate(module: PolkaVMModule) -> Result<Instance, DispatchError> {
+            // High-level API.
+            let linker: Linker = Linker::new();
 
             // Link the host functions with the module.
             let instance_pre = linker
@@ -197,16 +291,11 @@ pub mod pallet {
                 .map_err(|_| Error::<T>::PolkaVMModulePreInstantiationFailed)?;
 
             // Instantiate the module.
-            let mut instance = instance_pre
+            let instance = instance_pre
                 .instantiate()
                 .map_err(|_| Error::<T>::PolkaVMModuleInstantiationFailed)?;
 
-            // Grab the function and call it.
-            let result = instance
-                .call_typed_and_get_result::<u32, (u32, u32)>(&mut (), "add_numbers", (a, b))
-                .map_err(|_| Error::<T>::PolkaVMModuleExecutionFailed)?;
-
-            Ok(result)
+            Ok(instance)
         }
     }
 }
