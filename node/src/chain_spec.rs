@@ -118,3 +118,7 @@ fn testnet_genesis(
         },
     })
 }
+
+pub fn qf_devnet_config() -> Result<ChainSpec, String> {
+    ChainSpec::from_json_bytes(&include_bytes!("./res/qf-devnet.raw.json")[..])
+}
