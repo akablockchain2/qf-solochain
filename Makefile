@@ -8,9 +8,11 @@ tools: polkatool chain-spec-builder
 
 pvm-prog-%:
 	cd pvm_prog; RUSTFLAGS=$(GUEST_RUST_FLAGS) cargo build -q --release --bin qf-pvm-$* -p qf-pvm-$*
-	# cd pvm_prog; cargo build -q --release --bin qf-pvm-$* -p qf-pvm-$*
 	mkdir -p output
-	polkatool link --run-only-if-newer -s pvm_prog/target/riscv32ema-unknown-none-elf/release/qf-pvm-$* -o output/qf-pvm-$*.polkavm
+	polkatool link --run-only-if-newer -s pvm_prog/target/riscv32emac-unknown-none-polkavm/release/qf-pvm-$* -o output/qf-pvm-$*.polkavm
+
+test-pvm-prog-%:
+	cd qf-test-runner; cargo run -- --program=../output/qf-pvm-$*.polkavm
 
 chain-spec-builder:
 	cargo install --path vendor/polkadot-sdk/substrate/bin/utils/chain-spec-builder
@@ -23,6 +25,11 @@ qf-run: qf-node
 
 qf-run-wasm: qf-node
 	output/qf-node --dev --tmp --rpc-cors all --wasm-runtime-overrides output
+
+qf-node-release: qf-runtime
+	cargo build -p qf-node --release
+	mkdir -p output
+	cp target/debug/qf-node output
 
 qf-node: qf-runtime
 	cargo build -p qf-node
