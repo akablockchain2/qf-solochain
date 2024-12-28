@@ -36,7 +36,8 @@ pallet-sudo = { workspace = true }
 pallet-timestamp = { workspace = true }
 pallet-transaction-payment = { workspace = true }
 
-# QF polkavm dev pallet
+# QF pallets
+pallet-faucet = {workspace = true}
 pallet-qf-polkavm-dev = { workspace = true }
 
 # primitives
