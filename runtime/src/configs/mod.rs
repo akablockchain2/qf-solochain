@@ -35,7 +35,10 @@ use frame_support::{
 use frame_system::limits::{BlockLength, BlockWeights};
 use pallet_transaction_payment::{ConstFeeMultiplier, FungibleAdapter, Multiplier};
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_runtime::{Perbill, traits::One};
+use sp_runtime::{
+    Perbill,
+    traits::{Get, One},
+};
 use sp_version::RuntimeVersion;
 
 // Local module imports
@@ -51,7 +54,7 @@ parameter_types! {
     pub const BlockHashCount: BlockNumber = 2400;
     pub const Version: RuntimeVersion = VERSION;
 
-    /// We allow for 2 seconds of compute with a 6 second average block time.
+    /// We allow for 2 seconds of compute with a 4 second average block time.
     pub RuntimeBlockWeights: BlockWeights = BlockWeights::with_sensible_defaults(
         Weight::from_parts(2u64 * WEIGHT_REF_TIME_PER_SECOND, u64::MAX),
         NORMAL_DISPATCH_RATIO,
@@ -90,12 +93,20 @@ impl frame_system::Config for Runtime {
     type MaxConsumers = frame_support::traits::ConstU32<16>;
 }
 
+pub struct MinimumPeriodTimes<T>(core::marker::PhantomData<T>);
+
+impl<T: pallet_timestamp::Config> Get<T::Moment> for MinimumPeriodTimes<T> {
+    fn get() -> T::Moment {
+        <T as pallet_timestamp::Config>::MinimumPeriod::get()
+    }
+}
+
 impl pallet_aura::Config for Runtime {
     type AuthorityId = AuraId;
     type DisabledValidators = ();
     type MaxAuthorities = ConstU32<32>;
     type AllowMultipleBlocksPerSlot = ConstBool<false>;
-    type SlotDuration = pallet_aura::MinimumPeriodTimesTwo<Runtime>;
+    type SlotDuration = MinimumPeriodTimes<Runtime>;
 }
 
 impl pallet_grandpa::Config for Runtime {
@@ -161,9 +172,21 @@ parameter_types! {
     pub const PolkaVmMaxCodeLen: u32 = 1024;
 }
 
-/// Configure the pallet-template in pallets/template.
 impl pallet_qf_polkavm_dev::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
     type WeightInfo = pallet_qf_polkavm_dev::weights::SubstrateWeight<Runtime>;
     type MaxCodeLen = PolkaVmMaxCodeLen;
+}
+
+parameter_types! {
+    pub const FaucetAmount: u64 = 2;
+    pub const LockPeriod: u32 = 3600; // ~3h
+}
+
+impl pallet_faucet::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Currency = Balances;
+    type FaucetAmount = FaucetAmount;
+    type LockPeriod = LockPeriod;
+    type WeightInfo = pallet_faucet::weights::SubstrateWeight<Runtime>;
 }

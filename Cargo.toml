@@ -75,6 +75,7 @@ frame-system-rpc-runtime-api = { path = "./vendor/polkadot-sdk/substrate/frame/s
 pallet-aura = { path = "./vendor/polkadot-sdk/substrate/frame/aura", default-features = false }
 pallet-grandpa = { path = "./vendor/polkadot-sdk/substrate/frame/grandpa", default-features = false }
 pallet-template = { path = "./vendor/polkadot-sdk/substrate/frame/template", default-features = false }
+pallet-faucet = { path = "pallets/faucet", default-features = false }
 pallet-qf-polkavm-dev = { path = "pallets/qf-polkavm-dev", default-features = false }
 sp-api = { path = "./vendor/polkadot-sdk/substrate/primitives/api", default-features = false }
 sp-block-builder = { path = "./vendor/polkadot-sdk/substrate/primitives/block-builder", default-features = false }
