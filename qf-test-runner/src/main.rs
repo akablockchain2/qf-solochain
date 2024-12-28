@@ -1,9 +1,8 @@
 use clap::Parser;
-// use parity_scale_codec::{Decode, Encode};
 use tracing_subscriber::prelude::*;
 
 use polkavm::{
-    Config as PolkaVMConfig, Engine, Instance, Linker, Module as PolkaVMModule, ProgramBlob,
+    Config as PolkaVMConfig, Engine, Linker, Module as PolkaVMModule, ProgramBlob,
 };
 
 #[derive(Parser, Debug)]
@@ -29,7 +28,6 @@ fn main() {
     let cli = Cli::try_parse().expect("Failed to parse CLI arguments");
 
     let raw_blob = std::fs::read(cli.program).expect("Failed to read program");
-    // let raw_blob = std::fs::read("/Users/max/workspace/Rust/QF/qf-solochain/output/qf-pvm-calc.polkavm").expect("Failed to read program");
     let blob = ProgramBlob::parse(raw_blob.as_slice().into()).unwrap();
 
     let mut config = PolkaVMConfig::from_env().unwrap();
