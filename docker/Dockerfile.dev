@@ -1,0 +1,30 @@
+ARG BUILD_ARCH=x86_64
+
+FROM --platform=linux/${BUILD_ARCH} debian:bullseye-slim
+
+RUN mkdir -p /opt/qf-solochain
+
+RUN apt-get update && \
+    apt-get install -y ca-certificates && \
+    update-ca-certificates 
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+RUN apt install -y protobuf-compiler curl
+
+COPY --from=qf-node-image:latest /opt/qf-solochain/output /opt/qf-solochain
+COPY qf-node-start.sh /opt/qf-solochain/qf-node-start.sh
+RUN chmod +x /opt/qf-solochain/qf-node-start.sh
+
+WORKDIR /opt/qf-solochain
+
+ARG port=30333
+ARG rpc_port=9944
+ARG prometheus_port=9615
+
+ENV QF_PORT=${port}
+ENV QF_RPC_PORT=${rpc_port}
+
+EXPOSE ${port}
+EXPOSE ${rpc_port}
+EXPOSE ${prometheus_port}
+
+ENTRYPOINT [ "/opt/qf-solochain/qf-node-start.sh" ]
