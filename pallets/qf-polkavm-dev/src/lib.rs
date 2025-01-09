@@ -203,15 +203,17 @@ pub mod pallet {
                     version: 0,
                 },
             };
-            if blob_metadata.version != 0 {
-                Code::<T>::remove(T::Hashing::hash_of(&blob_metadata))
-            }
+            let old_address = T::Hashing::hash_of(&blob_metadata);
+            let old_version = blob_metadata.version;
             blob_metadata.version = blob_metadata
                 .version
                 .checked_add(1)
                 .ok_or(Error::<T>::IntegerOverflow)?;
             let address = T::Hashing::hash_of(&blob_metadata);
 
+            if old_version != 0 {
+                Code::<T>::remove(old_address)
+            }
             Code::<T>::insert(address, &raw_blob);
             CodeMetadata::<T>::insert(&who, blob_metadata);
 
