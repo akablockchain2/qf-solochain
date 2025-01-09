@@ -52,13 +52,22 @@ pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
     use frame_system::pallet_prelude::*;
-    use scale_info::prelude::vec::Vec;
+    use scale_info::{TypeInfo, prelude::vec::Vec};
+    use sp_runtime::traits::Hash;
 
     use polkavm::{
         Config as PolkaVMConfig, Engine, Instance, Linker, Module as PolkaVMModule, ProgramBlob,
     };
 
+    type CodeHash<T> = <T as frame_system::Config>::Hash;
     type CodeVec<T> = BoundedVec<u8, <T as Config>::MaxCodeLen>;
+
+    #[derive(Encode, Decode, MaxEncodedLen, TypeInfo)]
+    #[scale_info(skip_type_params(T))]
+    pub(super) struct BlobMetadata<T: Config> {
+        owner: T::AccountId,
+        version: u64,
+    }
 
     // The `Pallet` struct serves as a placeholder to implement traits, methods and dispatchables
     // (`Call`s) in this pallet.
@@ -87,11 +96,15 @@ pub mod pallet {
     }
 
     #[pallet::storage]
-    pub(super) type Code<T: Config> = StorageMap<_, Blake2_128Concat, T::AccountId, CodeVec<T>>;
+    pub(super) type Code<T: Config> = StorageMap<_, Blake2_128Concat, CodeHash<T>, CodeVec<T>>;
 
     #[pallet::storage]
     pub(super) type CalculationResult<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, u32>;
+        StorageMap<_, Blake2_128Concat, (CodeHash<T>, T::AccountId), u32>;
+
+    #[pallet::storage]
+    pub(super) type CodeMetadata<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, BlobMetadata<T>>;
 
     /// Events that functions in this pallet can emit.
     ///
@@ -108,14 +121,16 @@ pub mod pallet {
     pub enum Event<T: Config> {
         /// A user has successfully set a new value.
         Calculated {
+            /// The account who set the new value.
+            who: T::AccountId,
+            address: CodeHash<T>,
             /// The new value set.
             result: u32,
-            /// The account who set the new value.
-            who: T::AccountId,
         },
         ProgramBlobUploaded {
-            /// The account who set the new value.
+            /// The account who uploaded ProgramBlob.
             who: T::AccountId,
+            address: CodeHash<T>,
             exports: Vec<Vec<u8>>,
         },
     }
@@ -181,9 +196,30 @@ pub mod pallet {
                 .map(|export| export.symbol().clone().into_inner().to_vec())
                 .collect();
 
-            Code::<T>::insert(who.clone(), raw_blob);
+            let mut blob_metadata = match CodeMetadata::<T>::get(&who) {
+                Some(meta) => meta,
+                None => BlobMetadata {
+                    owner: who.clone(),
+                    version: 0,
+                },
+            };
+            if blob_metadata.version != 0 {
+                Code::<T>::remove(T::Hashing::hash_of(&blob_metadata))
+            }
+            blob_metadata.version = blob_metadata
+                .version
+                .checked_add(1)
+                .ok_or(Error::<T>::IntegerOverflow)?;
+            let address = T::Hashing::hash_of(&blob_metadata);
 
-            Self::deposit_event(Event::ProgramBlobUploaded { who, exports });
+            Code::<T>::insert(address, &raw_blob);
+            CodeMetadata::<T>::insert(&who, blob_metadata);
+
+            Self::deposit_event(Event::ProgramBlobUploaded {
+                who,
+                address,
+                exports,
+            });
 
             Ok(())
         }
@@ -195,11 +231,17 @@ pub mod pallet {
         /// error if it isn't. Learn more about origins here: <https://docs.substrate.io/build/origins/>
         #[pallet::call_index(1)]
         #[pallet::weight(T::WeightInfo::execute())]
-        pub fn execute(origin: OriginFor<T>, a: u32, b: u32, op: u8) -> DispatchResult {
+        pub fn execute(
+            origin: OriginFor<T>,
+            blob_address: CodeHash<T>,
+            a: u32,
+            b: u32,
+            op: u8,
+        ) -> DispatchResult {
             // Check that the extrinsic was signed and get the signer.
             let who = ensure_signed(origin)?;
 
-            let raw_blob = Code::<T>::get(&who)
+            let raw_blob = Code::<T>::get(blob_address)
                 .ok_or(Error::<T>::ProgramBlobNotFound)?
                 .into_inner();
 
@@ -210,10 +252,14 @@ pub mod pallet {
                 _ => Err(Error::<T>::InvalidOperation)?,
             };
 
-            CalculationResult::<T>::insert(&who, result);
+            CalculationResult::<T>::insert((&blob_address, &who), result);
 
             // Emit an event.
-            Self::deposit_event(Event::Calculated { result, who });
+            Self::deposit_event(Event::Calculated {
+                who,
+                address: blob_address,
+                result,
+            });
 
             // Return a successful `DispatchResult`
             Ok(())
