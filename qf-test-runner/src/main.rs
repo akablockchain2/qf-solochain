@@ -1,9 +1,7 @@
 use clap::Parser;
 use tracing_subscriber::prelude::*;
 
-use polkavm::{
-    Config as PolkaVMConfig, Engine, Linker, Module as PolkaVMModule, ProgramBlob,
-};
+use polkavm::{Config as PolkaVMConfig, Engine, Linker, Module as PolkaVMModule, ProgramBlob};
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -38,14 +36,14 @@ fn main() {
     let linker: Linker = Linker::new();
 
     // Link the host functions with the module.
-    let instance_pre = linker
-        .instantiate_pre(&module).unwrap();
+    let instance_pre = linker.instantiate_pre(&module).unwrap();
 
     // Instantiate the module.
-    let mut instance = instance_pre
-        .instantiate().unwrap();
+    let mut instance = instance_pre.instantiate().unwrap();
 
-    let res = instance.call_typed_and_get_result::<u32, (u32, u32)>(&mut (), "add_numbers", (1, 2)).unwrap();
+    let res = instance
+        .call_typed_and_get_result::<u32, (u32, u32)>(&mut (), "add_numbers", (1, 2))
+        .unwrap();
 
     tracing::info!("Result: {:?}", res);
 }
