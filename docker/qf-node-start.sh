@@ -1,7 +1,7 @@
 #!/bin/bash
 /opt/qf-solochain/qf-node \
 	--port ${QF_PORT} \
-	--base-path /opt/qf-solochain/node-data/qf1-devnet-node/ \
+	--base-path /opt/qf-solochain/node-data/qf-devnet-node/ \
 	--chain qf-devnet \
 	--node-key-file /opt/qf-solochain/node-data/qf-devnet-node/chains/qf-devnet/keystore/node-key \
 	--rpc-methods safe \
