@@ -29,7 +29,7 @@ qf-run-wasm: qf-node
 qf-node-release: qf-runtime
 	cargo build -p qf-node --release
 	mkdir -p output
-	cp target/debug/qf-node output
+	cp target/release/qf-node output
 
 qf-node: qf-runtime
 	cargo build -p qf-node
