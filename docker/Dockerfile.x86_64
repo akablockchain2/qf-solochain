@@ -1,0 +1,67 @@
+ARG BUILD_ARCH=x86_64
+
+FROM --platform=linux/${BUILD_ARCH} debian:bullseye AS builder
+
+LABEL MAINTAINER="Max Pestov <ealataur@gmail.com>"
+
+SHELL ["/bin/sh", "-c"]
+
+STOPSIGNAL SIGTERM
+
+RUN apt update && apt install -y gcc g++ make
+RUN apt install -y curl git
+RUN apt install -y protobuf-compiler libclang-dev
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain nightly -y
+ENV PATH="$PATH:/root/.cargo/bin"
+RUN rustup target add wasm32-unknown-unknown --toolchain nightly-aarch64-unknown-linux-gnu
+RUN rustup component add rust-src --toolchain nightly-aarch64-unknown-linux-gnu
+
+FROM builder AS builder-solochain
+
+WORKDIR /opt
+RUN git clone https://github.com/QuantumFusion-network/qf-solochain.git
+
+WORKDIR /opt/qf-solochain
+RUN make vendor-clone
+RUN make qf-node
+
+FROM --platform=linux/${BUILD_ARCH} debian:bullseye-slim
+
+LABEL MAINTAINER="Max Pestov <ealataur@gmail.com>"
+
+RUN mkdir -p /opt/qf-solochain
+
+RUN apt-get update && \
+    apt-get install -y ca-certificates && \
+    update-ca-certificates 
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+RUN apt install -y protobuf-compiler curl
+
+COPY --from=builder-solochain /opt/qf-solochain/output /opt/qf-solochain
+COPY qf-node-start.sh /opt/qf-solochain/qf-node-start.sh
+RUN chmod +x /opt/qf-solochain/qf-node-start.sh
+
+WORKDIR /opt/qf-solochain
+
+ARG port=30333
+ARG rpc_port=9944
+ARG prometheus_port=9615
+
+ENV QF_PORT=${port}
+ENV QF_RPC_PORT=${rpc_port}
+
+# You can define your node name here
+# ENV QF_NODE_NAME=
+
+ENV QF_TELEMETRY_URL='wss://telemetry.qfnetwork.xyz/submit 0'
+
+# You can define your boot node here
+ENV QF_BOOT_NODE_IP="103.113.69.222"
+ENV QF_BOOT_NODE_PORT="30333"
+ENV QF_BOOT_NODE_KEY="12D3KooWMWYPNvMSSstMoADACyX7EppjuRWtTeugFcVEQcrrjvoR"
+
+EXPOSE ${port}
+EXPOSE ${rpc_port}
+EXPOSE ${prometheus_port}
+
+ENTRYPOINT [ "/opt/qf-solochain/qf-node-start.sh" ]
