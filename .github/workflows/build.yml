@@ -25,7 +25,6 @@ jobs:
 
       - name: Build Project
         run: |
-          cd qf-solochain
           make vendor-clone
           make qf-node
 
