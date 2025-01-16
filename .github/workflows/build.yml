@@ -25,9 +25,13 @@ jobs:
 
       - name: Build Project
         run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
           make vendor-clone
           make qf-node
+
+      - name: Archive output files
+        run: |
+          mkdir -p artifacts
+          tar -czvf artifacts/qf-solochain-output.tar.gz output
 
       - name: Generate release name
         id: release_name
@@ -48,5 +52,7 @@ jobs:
             - Placeholder for changes in this release.
           draft: false
           prerelease: false
+          files: |
+            artifacts/qf-solochain-output.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
