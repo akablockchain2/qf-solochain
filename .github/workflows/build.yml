@@ -1,4 +1,4 @@
-name: Build QF Solochain (Debug)
+name: Build and Release QF Solochain
 
 on:
   push:
@@ -7,8 +7,9 @@ on:
 
 jobs:
   build:
-    name: Debug Build
+    name: Build and Release
     runs-on: [self-hosted, Linux, X64]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -31,8 +32,32 @@ jobs:
           echo "test" > test
           echo "test.wasm" > test.wasm
 
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v3
+      - name: Generate release name
+        id: release_name
+        run: |
+          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
+          DATE=$(date +'%d.%m.%Y')
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          echo "RELEASE_NAME=${REPO_NAME}-${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
+          echo "TAG_NAME=${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
         with:
-          name: build-artifacts
-          path: qf-solochain/output/
+          tag_name: ${{ env.TAG_NAME }}
+          release_name: ${{ env.RELEASE_NAME }}
+          draft: false
+          prerelease: false
+          body: |
+            **Release Notes**
+            - Placeholder for changes in this release.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload files to GitHub Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create-release.outputs.upload_url }}
+          asset_path: qf-solochain/output/test
+          asset_name: test
+          asset_content_type: text/plain
