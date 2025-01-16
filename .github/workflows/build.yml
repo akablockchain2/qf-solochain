@@ -1,4 +1,5 @@
-name: Build QF Solochain
+name: Build QF Solochain (Debug)
+
 on:
   push:
     branches:
@@ -6,8 +7,12 @@ on:
 
 jobs:
   build:
-    name: Build and Publish
+    name: Debug Build
     runs-on: self-hosted
+    labels:
+      - self-hosted
+      - Linux
+      - X64
 
     steps:
       - name: Checkout repository
@@ -23,14 +28,14 @@ jobs:
           export PATH="$HOME/.cargo/bin:$PATH"
           echo $PATH
 
-      - name: Clone and Build
+      - name: Create test files
         run: |
-          git clone https://github.com/QuantumFusion-network/qf-solochain.git
+          mkdir qf-solochain
           cd qf-solochain
-          make vendor-clone
-          rustup target add wasm32-unknown-unknown --toolchain nightly-x86_64-unknown-linux-gnu
-          rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-          make qf-node
+          mkdir output
+          cd output
+          echo "test" > test
+          echo "test.wasm" > test.wasm
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v3
