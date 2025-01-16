@@ -47,9 +47,6 @@ jobs:
         with:
           tag_name: ${{ env.TAG_NAME }}
           name: ${{ env.RELEASE_NAME }}
-          body: |
-            **Release Notes**
-            - Placeholder for changes in this release.
           draft: false
           prerelease: false
           files: |
@@ -60,7 +57,6 @@ jobs:
   build_docker:
     name: Build and Publish Docker Image
     runs-on: [self-hosted, Linux, X64]
-    needs: build_binary
 
     steps:
       - name: Checkout repository
