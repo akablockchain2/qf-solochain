@@ -8,12 +8,7 @@ on:
 jobs:
   build:
     name: Debug Build
-    runs-on: self-hosted
-    labels:
-      - self-hosted
-      - Linux
-      - X64
-
+    runs-on: [self-hosted, Linux, X64]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
