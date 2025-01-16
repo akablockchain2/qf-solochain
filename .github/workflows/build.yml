@@ -42,7 +42,7 @@ jobs:
           echo "TAG_NAME=${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
 
       - name: Create GitHub Release
-        uses: actions/create-release@v1
+        uses: actions/create-release@v3
         with:
           tag_name: ${{ env.TAG_NAME }}
           release_name: ${{ env.RELEASE_NAME }}
