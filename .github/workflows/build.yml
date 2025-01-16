@@ -25,6 +25,7 @@ jobs:
 
       - name: Build Project
         run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
           make vendor-clone
           make qf-node
 
