@@ -1,4 +1,4 @@
-name: Build and Release QF Solochain
+name: Build, Release, and Publish Docker
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
       - main
 
 jobs:
-  build:
-    name: Build and Release
+  build_binary:
+    name: Build Binary
     runs-on: [self-hosted, Linux, X64]
 
     steps:
@@ -56,3 +56,28 @@ jobs:
             artifacts/qf-solochain-output.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build_docker:
+    name: Build and Publish Docker Image
+    runs-on: [self-hosted, Linux, X64]
+    needs: build_binary
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Tag Docker Image
+        run: |
+          IMAGE_NAME="qf-solochain:${{ env.TAG_NAME }}"
+          docker build -f docker/Dockerfile.x86_64 -t $IMAGE_NAME .
+          docker tag $IMAGE_NAME ${{ secrets.DOCKER_USERNAME }}/$IMAGE_NAME
+
+      - name: Push Docker Image to Docker Hub
+        run: |
+          docker push ${{ secrets.DOCKER_USERNAME }}/qf-solochain:${{ env.TAG_NAME }}
