@@ -30,10 +30,11 @@ jobs:
 #
       - name: Archive output files
         run: |
-          mkdir -p artifacts
-          cd artifacts
+          mkdir output
+          cd output
           echo "qwe" > qwe.txt
           cd ..
+          mkdir -p artifacts
           tar -czvf artifacts/qf-solochain-output.tar.gz output
 
       - name: Generate checksums
