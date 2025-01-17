@@ -82,6 +82,7 @@ jobs:
           IMAGE_NAME="qf-solochain:${{ env.DOCKER_TAG_NAME }}"
           docker build -f docker/Dockerfile.test -t $IMAGE_NAME .
           docker tag $IMAGE_NAME ${{ secrets.DOCKER_HUB_USER }}/$IMAGE_NAME
+          docker tag $IMAGE_NAME ${{ secrets.DOCKER_HUB_USER }}/qf-solochain:latest
 
 #      - name: Build and Tag Docker Image
 #        run: |
@@ -92,3 +93,4 @@ jobs:
       - name: Push Docker Image to Docker Hub
         run: |
           docker push ${{ secrets.DOCKER_HUB_USER }}/qf-solochain:${{ env.DOCKER_TAG_NAME }}
+          docker push ${{ secrets.DOCKER_HUB_USER }}/qf-solochain:latest
