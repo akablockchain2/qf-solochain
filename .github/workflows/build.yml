@@ -77,7 +77,6 @@ jobs:
           echo "DOCKER_RELEASE_NAME=${REPO_NAME}-${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
           echo "DOCKER_TAG_NAME=${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
 
-
       - name: Build and Tag Docker Image
         run: |
           IMAGE_NAME="qf-solochain:${{ env.DOCKER_TAG_NAME }}"
@@ -89,7 +88,7 @@ jobs:
 #          IMAGE_NAME="qf-solochain:${{ env.TAG_NAME }}"
 #          docker build -f docker/Dockerfile.x86_64 -t $IMAGE_NAME .
 #          docker tag $IMAGE_NAME ${{ secrets.DOCKER_HUB_USER }}/$IMAGE_NAME
-#
-#      - name: Push Docker Image to Docker Hub
-#        run: |
-#          docker push ${{ secrets.DOCKER_HUB_USER }}/qf-solochain:${{ env.TAG_NAME }}
+
+      - name: Push Docker Image to Docker Hub
+        run: |
+          docker push ${{ secrets.DOCKER_HUB_USER }}/qf-solochain:${{ env.TAG_NAME }}
