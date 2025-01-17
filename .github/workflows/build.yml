@@ -91,4 +91,4 @@ jobs:
 
       - name: Push Docker Image to Docker Hub
         run: |
-          docker push ${{ secrets.DOCKER_HUB_USER }}/qf-solochain:${{ env.TAG_NAME }}
+          docker push ${{ secrets.DOCKER_HUB_USER }}/qf-solochain:${{ env.DOCKER_TAG_NAME }}
