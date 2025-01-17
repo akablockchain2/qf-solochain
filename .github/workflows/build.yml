@@ -28,11 +28,18 @@ jobs:
 #          make vendor-clone
 #          make qf-node
 #
-#      - name: Archive output files
-#        run: |
-#          mkdir -p artifacts
-#          tar -czvf artifacts/qf-solochain-output.tar.gz output
-#
+      - name: Archive output files
+        run: |
+          mkdir -p artifacts
+          cd artifacts
+          echo "qwe" > qwe.txt
+          cd ..
+          tar -czvf artifacts/qf-solochain-output.tar.gz output
+
+      - name: Generate checksums
+        run: |
+          shasum -a 256 artifacts/qf-solochain-output.tar.gz > artifacts/qf-solochain-output.tar.gz.sha256
+
       - name: Generate release name
         id: release_name
         run: |
@@ -42,17 +49,18 @@ jobs:
           echo "RELEASE_NAME=${REPO_NAME}-${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
           echo "TAG_NAME=${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
 
-#      - name: Create GitHub Release
-#        uses: softprops/action-gh-release@v1
-#        with:
-#          tag_name: ${{ env.TAG_NAME }}
-#          name: ${{ env.RELEASE_NAME }}
-#          draft: false
-#          prerelease: false
-#          files: |
-#            artifacts/qf-solochain-output.tar.gz
-#        env:
-#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: ${{ env.RELEASE_NAME }}
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/qf-solochain-output.tar.gz
+            artifacts/qf-solochain-output.tar.gz.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build_docker:
     name: Build and Publish Docker Image
