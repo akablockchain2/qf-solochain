@@ -68,7 +68,13 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_PAT }}
-#
+
+      - name: Build and Tag Docker Image
+        run: |
+          IMAGE_NAME="qf-solochain:${{ env.TAG_NAME }}"
+          docker build -f docker/Dockerfile.test -t $IMAGE_NAME .
+          docker tag $IMAGE_NAME ${{ secrets.DOCKER_HUB_USER }}/$IMAGE_NAME
+
 #      - name: Build and Tag Docker Image
 #        run: |
 #          IMAGE_NAME="qf-solochain:${{ env.TAG_NAME }}"
