@@ -57,7 +57,6 @@ jobs:
   build_docker:
     name: Build and Publish Docker Image
     runs-on: [self-hosted, Linux, X64]
-    needs: build_binary
 
     steps:
       - name: Checkout repository
@@ -69,9 +68,19 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_PAT }}
 
+      - name: Generate docker release name
+        id: docker_release_name
+        run: |
+          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
+          DATE=$(date +'%d.%m.%Y')
+          COMMIT_HASH=$(git rev-parse --short HEAD)
+          echo "DOCKER_RELEASE_NAME=${REPO_NAME}-${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
+          echo "DOCKER_TAG_NAME=${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
+
+
       - name: Build and Tag Docker Image
         run: |
-          IMAGE_NAME="qf-solochain:${{ env.TAG_NAME }}"
+          IMAGE_NAME="qf-solochain:${{ env.DOCKER_TAG_NAME }}"
           docker build -f docker/Dockerfile.test -t $IMAGE_NAME .
           docker tag $IMAGE_NAME ${{ secrets.DOCKER_HUB_USER }}/$IMAGE_NAME
 
