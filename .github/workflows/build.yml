@@ -2,8 +2,8 @@ name: Build, Release, and Publish Docker
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - '*'
 
 jobs:
   build_binary:
@@ -41,20 +41,11 @@ jobs:
         run: |
           shasum -a 256 artifacts/qf-solochain-output.tar.gz > artifacts/qf-solochain-output.tar.gz.sha256
 
-      - name: Generate release name
-        id: release_name
-        run: |
-          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          DATE=$(date +'%d.%m.%Y')
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          echo "RELEASE_NAME=${REPO_NAME}-${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
-          echo "TAG_NAME=${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ env.TAG_NAME }}
-          name: ${{ env.RELEASE_NAME }}
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           draft: false
           prerelease: false
           files: |
@@ -77,18 +68,9 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USER }}
           password: ${{ secrets.DOCKER_HUB_PAT }}
 
-      - name: Generate docker release name
-        id: docker_release_name
-        run: |
-          REPO_NAME=$(basename $(git rev-parse --show-toplevel))
-          DATE=$(date +'%d.%m.%Y')
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          echo "DOCKER_RELEASE_NAME=${REPO_NAME}-${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
-          echo "DOCKER_TAG_NAME=${DATE}-${COMMIT_HASH}" >> $GITHUB_ENV
-
       - name: Build and Tag Docker Image
         run: |
-          IMAGE_NAME="qf-solochain:${{ env.DOCKER_TAG_NAME }}"
+          IMAGE_NAME="qf-solochain:${{ github.ref_name }}"
           docker build -f docker/Dockerfile.test -t $IMAGE_NAME .
           docker tag $IMAGE_NAME ${{ secrets.DOCKER_HUB_USER }}/$IMAGE_NAME
           docker tag $IMAGE_NAME ${{ secrets.DOCKER_HUB_USER }}/qf-solochain:latest
@@ -101,5 +83,5 @@ jobs:
 
       - name: Push Docker Image to Docker Hub
         run: |
-          docker push ${{ secrets.DOCKER_HUB_USER }}/qf-solochain:${{ env.DOCKER_TAG_NAME }}
+          docker push ${{ secrets.DOCKER_HUB_USER }}/qf-solochain:${{ github.ref_name }}
           docker push ${{ secrets.DOCKER_HUB_USER }}/qf-solochain:latest
